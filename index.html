@@ -1,0 +1,1772 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SigFlow — Modern Email Signature Studio & Google Workspace Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'subtle': '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
+            'card': '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 0 1px 1px rgba(15, 23, 42, 0.04)',
+            'float': '0 20px 35px -10px rgba(15, 23, 42, 0.14)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .tab-indicator {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.7; }
+      100% { transform: scale(2.1); opacity: 0; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-indigo-100 selection:text-indigo-900">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-lg tracking-tight text-slate-900">SigFlow</span>
+          <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+            Workspace Ready
+          </span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs (Desktop) -->
+      <nav aria-label="Application Modes" class="hidden md:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/70">
+        <button onclick="switchMode('studio')" id="nav-studio" class="mode-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 bg-white text-slate-900 shadow-subtle">
+          <span class="w-4 h-4 rounded-md bg-indigo-100 text-indigo-700 inline-flex items-center justify-center text-[10px] font-bold">1</span>
+          Free Signature Studio
+        </button>
+        <button onclick="switchMode('deployer')" id="nav-deployer" class="mode-tab px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2">
+          <span class="w-4 h-4 rounded-md bg-slate-200/80 text-slate-600 inline-flex items-center justify-center text-[10px] font-bold">2</span>
+          Team & Workspace Deployer
+          <span id="outdated-badge" class="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">3</span>
+        </button>
+        <button onclick="switchMode('analytics')" id="nav-analytics" class="mode-tab px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2">
+          <span class="w-4 h-4 rounded-md bg-slate-200/80 text-slate-600 inline-flex items-center justify-center text-[10px] font-bold">3</span>
+          Banner Campaigns & Analytics
+        </button>
+      </nav>
+
+      <!-- Right Action CTA -->
+      <div class="flex items-center gap-2.5 shrink-0">
+        <button onclick="copyVisualSignature()" id="header-primary-cta" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white text-xs font-semibold shadow-sm transition-all flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          <span id="header-cta-label">Copy Visual Signature</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Mode Switcher -->
+    <div class="md:hidden border-t border-slate-200/70 bg-slate-50 px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
+      <button onclick="switchMode('studio')" id="m-nav-studio" class="flex-1 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-subtle border border-slate-200/60">
+        1. Studio
+      </button>
+      <button onclick="switchMode('deployer')" id="m-nav-deployer" class="flex-1 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600">
+        2. Team Deployer
+      </button>
+      <button onclick="switchMode('analytics')" id="m-nav-analytics" class="flex-1 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600">
+        3. Campaigns
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN APPLICATION CONTAINER -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- =================================================================== -->
+    <!-- MODE 1: FREE SIGNATURE STUDIO (INTERACTIVE LIVE BUILDER)            -->
+    <!-- =================================================================== -->
+    <section id="view-studio" class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+      
+      <!-- LEFT PANEL: Controls & Customization (5 cols) -->
+      <div class="lg:col-span-5 space-y-5">
+        
+        <!-- Card 1: Template Selector -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5">
+          <div class="flex items-center justify-between mb-3.5">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-900">1. Choose Signature Layout</h2>
+              <p class="text-xs text-slate-500 mt-0.5">100% inline-styled HTML tables tested in Gmail, Apple Mail & Outlook</p>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60">Email-Safe</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5" id="template-selector-grid">
+            <button type="button" onclick="setTemplate('minimal')" data-tpl="minimal" class="tpl-btn group text-left p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/40 transition-all">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold text-slate-900">Modern Minimal</span>
+                <span class="w-2 h-2 rounded-full bg-indigo-600 tpl-dot"></span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">Clean horizontal layout with crisp vertical divider & accent bar.</p>
+            </button>
+
+            <button type="button" onclick="setTemplate('executive')" data-tpl="executive" class="tpl-btn group text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition-all">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold text-slate-900">Executive Split</span>
+                <span class="w-2 h-2 rounded-full bg-transparent tpl-dot"></span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">Two-column hierarchy highlighting company brand & direct contact.</p>
+            </button>
+
+            <button type="button" onclick="setTemplate('startup')" data-tpl="startup" class="tpl-btn group text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition-all">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold text-slate-900">Startup Bold</span>
+                <span class="w-2 h-2 rounded-full bg-transparent tpl-dot"></span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">High-contrast badge header with prominent booking CTA pill.</p>
+            </button>
+
+            <button type="button" onclick="setTemplate('compact')" data-tpl="compact" class="tpl-btn group text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition-all">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-xs font-semibold text-slate-900">Compact Creator</span>
+                <span class="w-2 h-2 rounded-full bg-transparent tpl-dot"></span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">Ultra-light single-block signature built for fast founder replies.</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 2: Personal & Company Identity -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-900">2. Identity & Brand Styling</h2>
+            <button type="button" onclick="resetDemoProfile()" class="text-xs font-medium text-indigo-600 hover:text-indigo-700">Reset Sample</button>
+          </div>
+
+          <!-- Brand Accent Color Swatches -->
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-2">Brand Accent Color</label>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="setAccentColor('#4f46e5')" class="color-swatch w-7 h-7 rounded-lg bg-[#4f46e5] ring-2 ring-offset-2 ring-indigo-600 transition-transform hover:scale-105" title="Indigo"></button>
+              <button type="button" onclick="setAccentColor('#0f172a')" class="color-swatch w-7 h-7 rounded-lg bg-[#0f172a] transition-transform hover:scale-105" title="Obsidian"></button>
+              <button type="button" onclick="setAccentColor('#0284c7')" class="color-swatch w-7 h-7 rounded-lg bg-[#0284c7] transition-transform hover:scale-105" title="Sky Blue"></button>
+              <button type="button" onclick="setAccentColor('#059669')" class="color-swatch w-7 h-7 rounded-lg bg-[#059669] transition-transform hover:scale-105" title="Emerald"></button>
+              <button type="button" onclick="setAccentColor('#e11d48')" class="color-swatch w-7 h-7 rounded-lg bg-[#e11d48] transition-transform hover:scale-105" title="Rose"></button>
+              <button type="button" onclick="setAccentColor('#d97706')" class="color-swatch w-7 h-7 rounded-lg bg-[#d97706] transition-transform hover:scale-105" title="Amber"></button>
+              <div class="relative flex items-center ml-1">
+                <input type="color" id="input-accent-color" value="#4f46e5" oninput="setAccentColor(this.value)" class="w-7 h-7 rounded-lg border border-slate-200 cursor-pointer bg-transparent p-0.5" title="Custom Hex Color" />
+                <span id="accent-hex-label" class="ml-2 text-xs font-mono text-slate-500 uppercase">#4F46E5</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Inputs -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Full Name</label>
+              <input type="text" id="input-name" value="Maya Lin" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Job Title</label>
+              <input type="text" id="input-title" value="Head of Growth" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Department</label>
+              <input type="text" id="input-department" value="Revenue & Marketing" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Company Name</label>
+              <input type="text" id="input-company" value="Acme Cloud" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Work Email</label>
+              <input type="email" id="input-email" value="maya@acme.io" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Phone Number</label>
+              <input type="text" id="input-phone" value="+1 (415) 890-4312" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Website URL</label>
+              <input type="text" id="input-website" value="acme.io" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+            </div>
+          </div>
+
+          <!-- Headshot URL + Instant Preset Avatars -->
+          <div class="pt-1 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[11px] font-medium text-slate-600">Headshot Photo URL (or pick preset)</label>
+              <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                <input type="checkbox" id="toggle-headshot" checked onchange="updateSignatureState()" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                Show photo
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="input-avatar" value="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80" oninput="updateSignatureState()" class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" onclick="selectPresetAvatar('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80')" class="w-8 h-8 rounded-full overflow-hidden border-2 border-indigo-500 hover:scale-105 transition-transform" title="Preset 1">
+                  <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=80&h=80&q=80" alt="Avatar 1" class="w-full h-full object-cover" />
+                </button>
+                <button type="button" onclick="selectPresetAvatar('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80')" class="w-8 h-8 rounded-full overflow-hidden border border-slate-200 hover:scale-105 transition-transform" title="Preset 2">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=80&h=80&q=80" alt="Avatar 2" class="w-full h-full object-cover" />
+                </button>
+                <button type="button" onclick="selectPresetAvatar('https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&h=200&q=80')" class="w-8 h-8 rounded-full overflow-hidden border border-slate-200 hover:scale-105 transition-transform" title="Preset 3">
+                  <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=80&h=80&q=80" alt="Avatar 3" class="w-full h-full object-cover" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Logo URL -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-medium text-slate-600">Company Logo URL (Optional)</label>
+              <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                <input type="checkbox" id="toggle-logo" checked onchange="updateSignatureState()" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                Show brand badge
+              </label>
+            </div>
+            <input type="text" id="input-logo" placeholder="Leave blank for auto-generated crisp brand mark" value="" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+          </div>
+        </div>
+
+        <!-- Card 3: Social & Scheduling Links -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 space-y-3">
+          <h2 class="text-sm font-semibold text-slate-900">3. Social & Booking Links</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">LinkedIn URL</label>
+              <input type="text" id="input-linkedin" value="https://linkedin.com/in/mayalin" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">X / Twitter URL</label>
+              <input type="text" id="input-twitter" value="https://x.com/mayalin_io" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">GitHub URL</label>
+              <input type="text" id="input-github" value="" placeholder="https://github.com/username" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Calendly / Booking Link</label>
+              <input type="text" id="input-calendly" value="https://cal.com/maya/15min" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Marketing Promo Banner Builder -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-900">4. Marketing Promo Banner</h2>
+              <p class="text-[11px] text-slate-500">Turn every outgoing employee email into a tracked CTA</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggle-banner" checked onchange="updateSignatureState()" class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          <div id="banner-controls-body" class="space-y-3 pt-1">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1.5">Banner Visual Style</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="setBannerStyle('subtle')" data-bstyle="subtle" class="bstyle-btn px-2.5 py-1.5 rounded-lg text-xs font-medium border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900">
+                  Subtle Card
+                </button>
+                <button type="button" onclick="setBannerStyle('pill')" data-bstyle="pill" class="bstyle-btn px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:border-slate-300">
+                  Gradient Pill
+                </button>
+                <button type="button" onclick="setBannerStyle('event')" data-bstyle="event" class="bstyle-btn px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:border-slate-300">
+                  Event Invite
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Banner Headline</label>
+              <input type="text" id="input-banner-headline" value="Acme 2.0 is live — Automate your team workflows in minutes" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">CTA Button Text</label>
+                <input type="text" id="input-banner-cta" value="See What's New →" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Destination URL</label>
+                <input type="text" id="input-banner-url" value="https://acme.io/launch?utm_source=email_sig" oninput="updateSignatureState()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Live Gmail Preview & Export (7 cols, sticky) -->
+      <div class="lg:col-span-7 lg:sticky lg:top-22 space-y-5">
+        
+        <!-- Realistic Gmail Compose Mockup Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-card overflow-hidden">
+          
+          <!-- Mockup Top Bar -->
+          <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 mr-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500/90"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400/90"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/90"></span>
+              </div>
+              <span class="text-xs font-medium text-slate-200">New Message — Gmail Live Preview</span>
+            </div>
+
+            <!-- Light / Dark Client Toggle -->
+            <div class="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+              <button type="button" onclick="setPreviewTheme('light')" id="btn-theme-light" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-white text-slate-900 shadow-sm transition-all flex items-center gap-1.5">
+                <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" /></svg>
+                Light Mode
+              </button>
+              <button type="button" onclick="setPreviewTheme('dark')" id="btn-theme-dark" class="px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-300 hover:text-white transition-all flex items-center gap-1.5">
+                <svg class="w-3 h-3 text-indigo-300" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+                Dark Client
+              </button>
+            </div>
+          </div>
+
+          <!-- Email Header Metadata -->
+          <div id="gmail-canvas" class="transition-colors duration-200 bg-white text-slate-800">
+            <div id="gmail-headers" class="px-5 py-3 border-b border-slate-100 text-xs space-y-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 w-14">To</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px]" id="gmail-to-chip">Alex Rivera &lt;alex@enterprise.co&gt;</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 w-14">Subject</span>
+                <span class="font-medium text-slate-800" id="gmail-subject-text">Quick follow-up on our Q4 rollout</span>
+              </div>
+            </div>
+
+            <!-- Email Body Copy -->
+            <div class="px-6 pt-5 pb-7 space-y-5">
+              <div id="gmail-body-copy" class="text-[13.5px] leading-relaxed text-slate-600 space-y-3">
+                <p>Hi Alex,</p>
+                <p>Great speaking earlier! Here is the summary deck we discussed along with the timeline for onboarding your team across Google Workspace.</p>
+                <p>Let me know if Thursday afternoon works for a quick walkthrough.</p>
+              </div>
+
+              <!-- LIVE RENDERED SIGNATURE CONTAINER -->
+              <div class="pt-2 overflow-x-auto">
+                <div id="signature-preview-render" class="inline-block min-w-full">
+                  <!-- Injected dynamically via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Mockup Gmail Bottom Toolbar -->
+            <div id="gmail-footer-bar" class="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="px-4 py-1.5 rounded-full bg-blue-600 text-white text-xs font-medium shadow-xs">Send</span>
+                <div class="flex items-center gap-2.5 text-slate-400 text-xs font-serif">
+                  <span class="font-bold">B</span>
+                  <span class="italic">I</span>
+                  <span class="underline">U</span>
+                  <span>🔗</span>
+                  <span>📎</span>
+                </div>
+              </div>
+              <span class="text-[11px] text-slate-400">Synced via SigFlow</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export & Copy Action Bar -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-4 space-y-4">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <button type="button" onclick="copyVisualSignature()" class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-semibold shadow-sm shadow-indigo-600/20 transition-all flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy Visual Signature (Paste into Gmail)
+            </button>
+
+            <button type="button" onclick="copyRawHtml()" class="py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition-all flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              Copy Raw HTML
+            </button>
+
+            <button type="button" onclick="toggleHtmlSource()" id="btn-toggle-source" class="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 text-slate-700 text-xs font-medium transition-all flex items-center justify-center gap-1.5">
+              <span>Inspect Code</span>
+              <svg id="source-chevron" class="w-3.5 h-3.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Collapsible Email-Safe HTML Table Source Viewer -->
+          <div id="html-source-drawer" class="hidden pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-medium text-slate-500">Email-Client-Safe Inline Table Markup (Zero External CSS)</span>
+              <span id="html-byte-size" class="text-[11px] font-mono text-slate-400">0 KB</span>
+            </div>
+            <pre class="bg-slate-900 text-slate-200 rounded-xl p-3.5 text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed"><code id="raw-html-code"></code></pre>
+          </div>
+        </div>
+
+        <!-- Prominent Lead-Capture / Team Upsell Banner -->
+        <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-5 text-white shadow-card border border-indigo-500/20">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div class="space-y-1">
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-[11px] font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                Google Workspace Automation
+              </div>
+              <h3 class="text-sm sm:text-base font-semibold text-white">Deploying this for a team?</h3>
+              <p class="text-xs text-slate-300 leading-relaxed max-w-md">
+                Sync your Google Workspace directory and push standardized signatures + marketing banners to every employee's Gmail in 1 click.
+              </p>
+            </div>
+            <button type="button" onclick="switchMode('deployer')" class="shrink-0 px-4 py-2.5 rounded-xl bg-white hover:bg-indigo-50 text-slate-900 text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5">
+              <span>Switch to Team Deployer</span>
+              <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MODE 2: GOOGLE WORKSPACE TEAM DEPLOYER (INTERACTIVE SAAS DASHBOARD) -->
+    <!-- =================================================================== -->
+    <section id="view-deployer" class="hidden space-y-6">
+      
+      <!-- Top Workspace Connection & API Status Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div class="flex items-start sm:items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
+              <!-- Google G Styled Icon -->
+              <svg class="w-6 h-6" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2.5">
+                <h1 class="text-base sm:text-lg font-bold text-slate-900">Google Workspace Domain Sync</h1>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Connected: acme.io
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">
+                Service Account Delegation active (<code class="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">gmail.settings.basic</code> &amp; <code class="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">admin.directory.user.readonly</code>) • Last directory sync: <span id="last-sync-time" class="font-medium text-slate-700">2 mins ago</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="simulateDirectorySync()" id="btn-sync-directory" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold transition-all flex items-center gap-2">
+              <svg id="sync-icon" class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Sync Directory</span>
+            </button>
+
+            <button type="button" onclick="deploySignaturesToWorkspace()" id="btn-deploy-all" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-semibold shadow-sm shadow-indigo-600/20 transition-all flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span id="deploy-btn-text">Push Signature to Selected Gmail Accounts</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Animated API Deployment Progress Bar (Hidden until triggered) -->
+        <div id="deployment-progress-panel" class="hidden mt-5 pt-5 border-t border-slate-100">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+              <span id="deploy-status-log" class="font-mono text-slate-700">Initializing Gmail API users.settings.sendAs.patch batch...</span>
+            </div>
+            <span id="deploy-percent-label" class="font-mono font-semibold text-indigo-600">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div id="deploy-progress-bar" class="h-full bg-gradient-to-r from-indigo-600 to-violet-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Strip -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-subtle">
+          <span class="text-xs font-medium text-slate-500">Workspace Seats</span>
+          <div class="mt-1 flex items-baseline justify-between">
+            <span id="stat-total-seats" class="text-2xl font-bold text-slate-900">7</span>
+            <span class="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">$2/user/mo</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-subtle">
+          <span class="text-xs font-medium text-slate-500">Synced Signatures</span>
+          <div class="mt-1 flex items-baseline justify-between">
+            <span id="stat-synced-count" class="text-2xl font-bold text-emerald-600">4</span>
+            <span class="text-[11px] text-slate-400">Active in Gmail</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-subtle">
+          <span class="text-xs font-medium text-slate-500">Needs Update</span>
+          <div class="mt-1 flex items-baseline justify-between">
+            <span id="stat-outdated-count" class="text-2xl font-bold text-amber-600">3</span>
+            <span class="text-[11px] text-slate-400">Template drift</span>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-subtle">
+          <span class="text-xs font-medium text-slate-500">Active Studio Template</span>
+          <div class="mt-1 flex items-baseline justify-between">
+            <span id="stat-active-template" class="text-base font-bold text-indigo-600 truncate">Modern Minimal</span>
+            <button onclick="switchMode('studio')" class="text-[11px] font-medium text-slate-500 hover:text-indigo-600 underline">Edit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employee Directory Table Card -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle overflow-hidden">
+        
+        <!-- Table Toolbar -->
+        <div class="p-4 sm:px-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative">
+              <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input type="text" id="employee-search" oninput="renderEmployeeTable()" placeholder="Filter name, email, or role..." class="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 w-56" />
+            </div>
+
+            <select id="dept-filter" onchange="renderEmployeeTable()" class="px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-indigo-500">
+              <option value="ALL">All Departments</option>
+              <option value="Leadership">Leadership</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Sales">Sales</option>
+              <option value="Marketing">Marketing</option>
+            </select>
+          </div>
+
+          <button type="button" onclick="toggleAddEmployeeForm()" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all inline-flex items-center gap-1.5 self-start sm:self-auto">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Team Member
+          </button>
+        </div>
+
+        <!-- Inline Add Employee Drawer -->
+        <div id="add-employee-drawer" class="hidden bg-slate-50/90 px-6 py-4 border-b border-slate-200/80">
+          <form onsubmit="handleAddEmployee(event)" class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Full Name</label>
+              <input type="text" id="new-emp-name" required placeholder="Jordan Lee" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Google Workspace Email</label>
+              <input type="email" id="new-emp-email" required placeholder="jordan@acme.io" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Job Title</label>
+              <input type="text" id="new-emp-title" required placeholder="Account Executive" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Department</label>
+              <select id="new-emp-dept" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white">
+                <option value="Sales">Sales</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Leadership">Leadership</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="submit" class="flex-1 py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Save</button>
+              <button type="button" onclick="toggleAddEmployeeForm()" class="py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Responsive Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200/80 bg-slate-50/60 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th class="py-3 pl-6 pr-2 w-10">
+                  <input type="checkbox" id="select-all-employees" checked onchange="toggleSelectAllEmployees(this.checked)" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                </th>
+                <th class="py-3 px-4">Employee</th>
+                <th class="py-3 px-4">Title (Click to Edit)</th>
+                <th class="py-3 px-4">Department</th>
+                <th class="py-3 px-4">Gmail Sync Status</th>
+                <th class="py-3 pl-4 pr-6 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="employee-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Employee Live Signature Preview Modal -->
+      <div id="emp-preview-modal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-float border border-slate-200 overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900" id="modal-emp-heading">Personalized Signature Preview</h3>
+              <p class="text-[11px] text-slate-500">Auto-merged from Google Workspace Directory attributes</p>
+            </div>
+            <button onclick="closeEmployeeModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div class="p-6 bg-slate-50/60 overflow-x-auto">
+            <div id="modal-emp-signature-container" class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-subtle"></div>
+          </div>
+          <div class="px-5 py-3 bg-white border-t border-slate-100 flex items-center justify-end gap-2">
+            <button onclick="closeEmployeeModal()" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50">Close</button>
+            <button id="modal-push-single-btn" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold">Push to This User's Gmail</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MODE 3: BANNER CAMPAIGNS & CLICK ANALYTICS                          -->
+    <!-- =================================================================== -->
+    <section id="view-analytics" class="hidden space-y-6">
+      
+      <!-- Header & Live Campaign Switcher -->
+      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 sm:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold text-slate-900">Dynamic Email Banner Campaigns</h1>
+              <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/60">Zero Re-Sync Required</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Swap company-wide promotional banners via tracked redirect links (<code class="font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">go.acme.io/c/active</code>) without touching Gmail API quotas.
+            </p>
+          </div>
+          <div class="text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/70">
+            Active across <strong class="text-slate-900">7 employees</strong> • Est. <strong class="text-slate-900">1,420</strong> daily emails sent
+          </div>
+        </div>
+
+        <!-- Campaign Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="campaign-cards-grid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Analytics KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-subtle">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Signature Impressions (30d)</span>
+            <span class="text-emerald-600 font-semibold">+18.4%</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-slate-900" id="kpi-impressions">42,890</div>
+          <p class="text-[11px] text-slate-400 mt-1">Tracked across external recipient opens</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-subtle">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Promo Banner Clicks</span>
+            <span class="text-emerald-600 font-semibold">+24.1%</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-indigo-600" id="kpi-clicks">1,842</div>
+          <p class="text-[11px] text-slate-400 mt-1">High-intent warm pipeline clicks</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-subtle">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Average Banner CTR</span>
+            <span class="text-emerald-600 font-semibold">+0.6%</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-slate-900" id="kpi-ctr">4.29%</div>
+          <p class="text-[11px] text-slate-400 mt-1">3.4x higher than cold outbound ads</p>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-subtle">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span>Calendly Meetings Booked</span>
+            <span class="text-indigo-600 font-semibold">Direct Attribution</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-slate-900" id="kpi-meetings">63</div>
+          <p class="text-[11px] text-slate-400 mt-1">Booked via signature scheduling links</p>
+        </div>
+      </div>
+
+      <!-- Charts & Top Performing Employees Split -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 14-Day Click Performance SVG/CSS Bar Chart (7 cols) -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 sm:p-6 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Daily Banner & Link Click Velocity</h2>
+              <p class="text-xs text-slate-500">Last 14 business days across all synced Workspace signatures</p>
+            </div>
+            <div class="flex items-center gap-3 text-[11px]">
+              <span class="flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-2.5 rounded-xs bg-indigo-600"></span> Banner CTA</span>
+              <span class="flex items-center gap-1.5 text-slate-600"><span class="w-2.5 h-2.5 rounded-xs bg-indigo-200"></span> Social / Booking</span>
+            </div>
+          </div>
+
+          <!-- Responsive Bar Chart -->
+          <div id="analytics-bar-chart" class="h-56 flex items-end justify-between gap-2 pt-6 pb-2 border-b border-slate-100">
+            <!-- Bars injected via JS -->
+          </div>
+          <div id="analytics-bar-labels" class="flex items-center justify-between pt-2 text-[10px] font-mono text-slate-400">
+            <!-- Labels injected via JS -->
+          </div>
+        </div>
+
+        <!-- Top Performing Employee Signatures Leaderboard (5 cols) -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-subtle p-5 sm:p-6">
+          <div class="mb-4">
+            <h2 class="text-sm font-bold text-slate-900">Top Performing Employee Signatures</h2>
+            <p class="text-xs text-slate-500">Ranked by banner clicks & booked meetings</p>
+          </div>
+
+          <div id="top-performers-list" class="space-y-3.5">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Minimal Clean Footer -->
+  <footer class="border-t border-slate-200/80 bg-white mt-12">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-slate-800">SigFlow</span>
+        <span>•</span>
+        <span>Email-safe HTML Signature Engine &amp; Google Workspace Admin Sync</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button onclick="switchMode('studio')" class="hover:text-slate-900">Signature Studio</button>
+        <button onclick="switchMode('deployer')" class="hover:text-slate-900">Workspace Sync</button>
+        <button onclick="switchMode('analytics')" class="hover:text-slate-900">Campaign Analytics</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC & EMAIL-SAFE SIGNATURE RENDERER                     -->
+  <!-- ===================================================================== -->
+  <script>
+    // 1. GLOBAL APPLICATION STATE
+    const appState = {
+      activeMode: 'studio',
+      previewTheme: 'light',
+      template: 'minimal',
+      accentColor: '#4f46e5',
+      profile: {
+        name: 'Maya Lin',
+        title: 'Head of Growth',
+        department: 'Revenue & Marketing',
+        company: 'Acme Cloud',
+        email: 'maya@acme.io',
+        phone: '+1 (415) 890-4312',
+        website: 'acme.io',
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80',
+        showHeadshot: true,
+        logo: '',
+        showLogo: true,
+        linkedin: 'https://linkedin.com/in/mayalin',
+        twitter: 'https://x.com/mayalin_io',
+        github: '',
+        calendly: 'https://cal.com/maya/15min'
+      },
+      banner: {
+        enabled: true,
+        style: 'subtle',
+        headline: 'Acme 2.0 is live — Automate your team workflows in minutes',
+        ctaText: "See What's New →",
+        url: 'https://acme.io/launch?utm_source=email_sig'
+      },
+      employees: [
+        { id: 'emp-1', name: 'Maya Lin', email: 'maya@acme.io', title: 'Head of Growth', department: 'Marketing', phone: '+1 (415) 890-4312', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&h=150&q=80', status: 'Synced', selected: true, clicks: 482 },
+        { id: 'emp-2', name: 'Marcus Vance', email: 'marcus@acme.io', title: 'Enterprise Account Executive', department: 'Sales', phone: '+1 (415) 890-1194', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80', status: 'Synced', selected: true, clicks: 615 },
+        { id: 'emp-3', name: 'Elena Rostova', email: 'elena@acme.io', title: 'Co-Founder & CEO', department: 'Leadership', phone: '+1 (415) 890-0010', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&h=150&q=80', status: 'Outdated', selected: true, clicks: 394 },
+        { id: 'emp-4', name: 'Devon Brooks', email: 'devon@acme.io', title: 'Staff Infrastructure Engineer', department: 'Engineering', phone: '+1 (415) 890-7721', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80', status: 'Outdated', selected: true, clicks: 118 },
+        { id: 'emp-5', name: 'Priya Nair', email: 'priya@acme.io', title: 'Solutions Architect', department: 'Sales', phone: '+1 (415) 890-3389', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80', status: 'Synced', selected: true, clicks: 279 },
+        { id: 'emp-6', name: 'Lucas Meyer', email: 'lucas@acme.io', title: 'Product Marketing Manager', department: 'Marketing', phone: '+1 (415) 890-6502', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&h=150&q=80', status: 'Outdated', selected: true, clicks: 204 },
+        { id: 'emp-7', name: 'Hannah Kim', email: 'hannah@acme.io', title: 'VP of Engineering', department: 'Engineering', phone: '+1 (415) 890-9844', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80', status: 'Synced', selected: false, clicks: 150 }
+      ],
+      campaigns: [
+        {
+          id: 'camp-1',
+          name: 'Product Launch — Acme 2.0',
+          badge: 'Active Now',
+          style: 'subtle',
+          headline: 'Acme 2.0 is live — Automate your team workflows in minutes',
+          ctaText: "See What's New →",
+          url: 'https://acme.io/launch?utm_source=email_sig',
+          impressions: '42,890',
+          clicks: '1,842',
+          ctr: '4.29%',
+          meetings: 63
+        },
+        {
+          id: 'camp-2',
+          name: 'Q4 Live Webinar Invite',
+          badge: 'Scheduled',
+          style: 'event',
+          headline: 'Live Workshop: Scaling B2B Ops Without Hiring Overhead (Nov 28)',
+          ctaText: 'Reserve Free Seat →',
+          url: 'https://acme.io/webinar?utm_source=email_sig',
+          impressions: '19,400',
+          clicks: '912',
+          ctr: '4.70%',
+          meetings: 41
+        },
+        {
+          id: 'camp-3',
+          name: '2026 Industry Benchmark Report',
+          badge: 'Evergreen',
+          style: 'pill',
+          headline: 'Download the 2026 State of SaaS Efficiency Report (Free PDF)',
+          ctaText: 'Read Report →',
+          url: 'https://acme.io/report?utm_source=email_sig',
+          impressions: '61,250',
+          clicks: '2,390',
+          ctr: '3.90%',
+          meetings: 88
+        }
+      ],
+      activeCampaignId: 'camp-1'
+    };
+
+    const TEMPLATE_LABELS = {
+      minimal: 'Modern Minimal',
+      executive: 'Executive Split',
+      startup: 'Startup Bold',
+      compact: 'Compact Creator'
+    };
+
+    // 2. HELPER: ESCAPE HTML TO PREVENT XSS IN USER INPUTS
+    function esc(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeUrl(url) {
+      if (!url) return '';
+      const trimmed = url.trim();
+      if (/^https?:\/\//i.test(trimmed)) return trimmed;
+      return 'https://' + trimmed;
+    }
+
+    // 3. EMAIL-CLIENT-SAFE INLINE HTML TABLE GENERATOR
+    // Generates pure inline-styled <table> markup compatible with Gmail, Apple Mail, and Outlook
+    function buildSignatureHTML(customPerson = null) {
+      const p = customPerson ? { ...appState.profile, ...customPerson } : appState.profile;
+      const b = appState.banner;
+      const accent = appState.accentColor || '#4f46e5';
+      const tpl = appState.template;
+
+      const safeName = esc(p.name || 'Your Name');
+      const safeTitle = esc(p.title || 'Role');
+      const safeDept = esc(p.department || '');
+      const safeCompany = esc(p.company || 'Company');
+      const safeEmail = esc(p.email || '');
+      const safePhone = esc(p.phone || '');
+      const safeWebsiteText = esc((p.website || '').replace(/^https?:\/\//i, ''));
+      const safeWebsiteHref = esc(normalizeUrl(p.website));
+      const safeAvatar = esc(p.avatar);
+      const safeLogo = esc(p.logo);
+
+      // Build clean text-based/badge social links (universally supported across all email clients without broken external icon PNGs)
+      const socialItems = [];
+      if (p.linkedin) socialItems.push(`<a href="${esc(normalizeUrl(p.linkedin))}" target="_blank" style="color:${accent};text-decoration:none;font-weight:600;font-size:12px;">LinkedIn</a>`);
+      if (p.twitter) socialItems.push(`<a href="${esc(normalizeUrl(p.twitter))}" target="_blank" style="color:${accent};text-decoration:none;font-weight:600;font-size:12px;">X / Twitter</a>`);
+      if (p.github) socialItems.push(`<a href="${esc(normalizeUrl(p.github))}" target="_blank" style="color:${accent};text-decoration:none;font-weight:600;font-size:12px;">GitHub</a>`);
+      if (p.calendly) socialItems.push(`<a href="${esc(normalizeUrl(p.calendly))}" target="_blank" style="color:#ffffff;background-color:${accent};padding:3px 9px;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px;display:inline-block;">Book a Call</a>`);
+
+      const socialRowHtml = socialItems.length > 0
+        ? `<tr><td style="padding-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.4;">${socialItems.join('<span style="color:#cbd5e1;padding:0 6px;">•</span>')}</td></tr>`
+        : '';
+
+      // Company logo or crisp typographic badge
+      const brandMarkHtml = p.showLogo
+        ? (safeLogo
+            ? `<img src="${safeLogo}" alt="${safeCompany}" height="22" style="height:22px;width:auto;display:block;border:0;" />`
+            : `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background-color:${accent}15;color:${accent};font-weight:700;font-size:11px;letter-spacing:0.03em;text-transform:uppercase;">${safeCompany}</span>`)
+        : '';
+
+      // Promotional Banner Block (Email-safe table)
+      let bannerHtml = '';
+      if (b.enabled && b.headline) {
+        const bHeadline = esc(b.headline);
+        const bCta = esc(b.ctaText || 'Learn More →');
+        const bUrl = esc(normalizeUrl(b.url || p.website));
+
+        if (b.style === 'pill') {
+          bannerHtml = `
+            <tr>
+              <td colspan="2" style="padding-top:14px;">
+                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:${accent};border-radius:8px;width:100%;max-width:480px;">
+                  <tr>
+                    <td style="padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.4;color:#ffffff;font-weight:500;">
+                      ${bHeadline}
+                    </td>
+                    <td align="right" style="padding:10px 14px 10px 6px;white-space:nowrap;">
+                      <a href="${bUrl}" target="_blank" style="display:inline-block;background-color:#ffffff;color:${accent};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;text-decoration:none;padding:5px 10px;border-radius:5px;">${bCta}</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`;
+        } else if (b.style === 'event') {
+          bannerHtml = `
+            <tr>
+              <td colspan="2" style="padding-top:14px;">
+                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ${accent};border-radius:6px;width:100%;max-width:480px;">
+                  <tr>
+                    <td style="padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${accent};margin-bottom:2px;">Featured Event</div>
+                      <div style="font-size:12px;font-weight:600;color:#0f172a;line-height:1.35;">${bHeadline}</div>
+                      <div style="margin-top:5px;">
+                        <a href="${bUrl}" target="_blank" style="font-size:11px;font-weight:700;color:${accent};text-decoration:none;">${bCta}</a>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`;
+        } else {
+          // Subtle Card (Default)
+          bannerHtml = `
+            <tr>
+              <td colspan="2" style="padding-top:14px;">
+                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;width:100%;max-width:480px;">
+                  <tr>
+                    <td style="padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.4;color:#334155;">
+                      <strong style="color:#0f172a;">${bHeadline}</strong>
+                    </td>
+                    <td align="right" style="padding:10px 14px 10px 8px;white-space:nowrap;">
+                      <a href="${bUrl}" target="_blank" style="display:inline-block;background-color:${accent};color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;text-decoration:none;padding:5px 11px;border-radius:5px;">${bCta}</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`;
+        }
+      }
+
+      // TEMPLATE 1: MODERN MINIMAL
+      if (tpl === 'minimal') {
+        const avatarCell = (p.showHeadshot && safeAvatar)
+          ? `<td valign="top" style="padding-right:14px;">
+               <img src="${safeAvatar}" alt="${safeName}" width="68" height="68" style="width:68px;height:68px;border-radius:50%;object-fit:cover;display:block;border:2px solid ${accent}25;" />
+             </td>`
+          : '';
+
+        return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <tr>
+    ${avatarCell}
+    <td valign="top" style="border-left:3px solid ${accent};padding-left:14px;">
+      <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+        <tr>
+          <td style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.25;">${safeName}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:#475569;padding-top:2px;line-height:1.35;">
+            ${safeTitle}${safeDept ? ` · <span style="color:#64748b;">${safeDept}</span>` : ''} · <strong style="color:${accent};font-weight:600;">${safeCompany}</strong>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:7px;font-size:12px;color:#475569;line-height:1.5;">
+            ${safeEmail ? `<a href="mailto:${safeEmail}" style="color:#334155;text-decoration:none;">${safeEmail}</a>` : ''}
+            ${safePhone ? `<span style="color:#cbd5e1;padding:0 6px;">|</span><span>${safePhone}</span>` : ''}
+            ${safeWebsiteText ? `<span style="color:#cbd5e1;padding:0 6px;">|</span><a href="${safeWebsiteHref}" target="_blank" style="color:${accent};text-decoration:none;font-weight:500;">${safeWebsiteText}</a>` : ''}
+          </td>
+        </tr>
+        ${socialRowHtml}
+      </table>
+    </td>
+  </tr>
+  ${bannerHtml}
+</table>`;
+      }
+
+      // TEMPLATE 2: EXECUTIVE SPLIT
+      if (tpl === 'executive') {
+        const avatarBlock = (p.showHeadshot && safeAvatar)
+          ? `<img src="${safeAvatar}" alt="${safeName}" width="64" height="64" style="width:64px;height:64px;border-radius:12px;object-fit:cover;display:block;margin-bottom:8px;" />`
+          : '';
+
+        return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <tr>
+    <td valign="top" style="padding-right:18px;border-right:1px solid #e2e8f0;min-width:155px;">
+      ${avatarBlock}
+      <div style="font-size:15px;font-weight:700;color:#0f172a;line-height:1.25;">${safeName}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:2px;line-height:1.35;">${safeTitle}</div>
+      <div style="margin-top:7px;">${brandMarkHtml || `<strong style="font-size:12px;color:${accent};">${safeCompany}</strong>`}</div>
+    </td>
+    <td valign="top" style="padding-left:18px;">
+      <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-size:12px;color:#334155;line-height:1.65;">
+        ${safeEmail ? `<tr><td><span style="color:#94a3b8;font-weight:600;display:inline-block;width:22px;">E:</span><a href="mailto:${safeEmail}" style="color:#0f172a;text-decoration:none;">${safeEmail}</a></td></tr>` : ''}
+        ${safePhone ? `<tr><td><span style="color:#94a3b8;font-weight:600;display:inline-block;width:22px;">P:</span><span>${safePhone}</span></td></tr>` : ''}
+        ${safeWebsiteText ? `<tr><td><span style="color:#94a3b8;font-weight:600;display:inline-block;width:22px;">W:</span><a href="${safeWebsiteHref}" target="_blank" style="color:${accent};text-decoration:none;font-weight:600;">${safeWebsiteText}</a></td></tr>` : ''}
+        ${socialRowHtml}
+      </table>
+    </td>
+  </tr>
+  ${bannerHtml}
+</table>`;
+      }
+
+      // TEMPLATE 3: STARTUP BOLD
+      if (tpl === 'startup') {
+        const avatarCell = (p.showHeadshot && safeAvatar)
+          ? `<td valign="middle" style="padding-right:14px;">
+               <img src="${safeAvatar}" alt="${safeName}" width="64" height="64" style="width:64px;height:64px;border-radius:14px;object-fit:cover;display:block;border:2px solid ${accent};" />
+             </td>`
+          : '';
+
+        return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <tr>
+    ${avatarCell}
+    <td valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+        <tr>
+          <td>
+            <span style="font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-0.01em;">${safeName}</span>
+            <span style="padding-left:8px;">${brandMarkHtml}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:12.5px;color:#475569;padding-top:2px;">
+            ${safeTitle}${safeDept ? ` · ${safeDept}` : ''}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-top:6px;font-size:12px;color:#334155;">
+            ${safeEmail ? `<a href="mailto:${safeEmail}" style="color:#0f172a;text-decoration:none;font-weight:500;">${safeEmail}</a>` : ''}
+            ${safePhone ? `<span style="color:#cbd5e1;padding:0 6px;">•</span><span>${safePhone}</span>` : ''}
+            ${safeWebsiteText ? `<span style="color:#cbd5e1;padding:0 6px;">•</span><a href="${safeWebsiteHref}" target="_blank" style="color:${accent};text-decoration:none;font-weight:600;">${safeWebsiteText}</a>` : ''}
+          </td>
+        </tr>
+        ${socialRowHtml}
+      </table>
+    </td>
+  </tr>
+  ${bannerHtml}
+</table>`;
+      }
+
+      // TEMPLATE 4: COMPACT CREATOR
+      const smallAvatar = (p.showHeadshot && safeAvatar)
+        ? `<td valign="middle" style="padding-right:11px;">
+             <img src="${safeAvatar}" alt="${safeName}" width="46" height="46" style="width:46px;height:46px;border-radius:50%;object-fit:cover;display:block;" />
+           </td>`
+        : '';
+
+      return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <tr>
+    ${smallAvatar}
+    <td valign="middle">
+      <div style="font-size:14px;font-weight:700;color:#0f172a;line-height:1.3;">
+        ${safeName} <span style="font-weight:400;color:#64748b;">— ${safeTitle},</span> <span style="color:${accent};font-weight:600;">${safeCompany}</span>
+      </div>
+      <div style="font-size:12px;color:#475569;padding-top:2px;">
+        ${safeWebsiteText ? `<a href="${safeWebsiteHref}" target="_blank" style="color:#334155;text-decoration:none;">${safeWebsiteText}</a>` : ''}
+        ${safePhone ? `<span style="color:#cbd5e1;padding:0 6px;">·</span><span>${safePhone}</span>` : ''}
+        ${p.calendly ? `<span style="color:#cbd5e1;padding:0 6px;">·</span><a href="${esc(normalizeUrl(p.calendly))}" target="_blank" style="color:${accent};font-weight:600;text-decoration:none;">Schedule 15m →</a>` : ''}
+      </div>
+    </td>
+  </tr>
+  ${bannerHtml}
+</table>`;
+    }
+
+    // 4. UPDATE LIVE STUDIO PREVIEW & RAW HTML VIEWER
+    function updateSignatureState() {
+      appState.profile.name = document.getElementById('input-name').value;
+      appState.profile.title = document.getElementById('input-title').value;
+      appState.profile.department = document.getElementById('input-department').value;
+      appState.profile.company = document.getElementById('input-company').value;
+      appState.profile.email = document.getElementById('input-email').value;
+      appState.profile.phone = document.getElementById('input-phone').value;
+      appState.profile.website = document.getElementById('input-website').value;
+      appState.profile.avatar = document.getElementById('input-avatar').value;
+      appState.profile.showHeadshot = document.getElementById('toggle-headshot').checked;
+      appState.profile.logo = document.getElementById('input-logo').value;
+      appState.profile.showLogo = document.getElementById('toggle-logo').checked;
+      appState.profile.linkedin = document.getElementById('input-linkedin').value;
+      appState.profile.twitter = document.getElementById('input-twitter').value;
+      appState.profile.github = document.getElementById('input-github').value;
+      appState.profile.calendly = document.getElementById('input-calendly').value;
+
+      appState.banner.enabled = document.getElementById('toggle-banner').checked;
+      appState.banner.headline = document.getElementById('input-banner-headline').value;
+      appState.banner.ctaText = document.getElementById('input-banner-cta').value;
+      appState.banner.url = document.getElementById('input-banner-url').value;
+
+      // Dim banner inputs when disabled
+      const bannerBody = document.getElementById('banner-controls-body');
+      bannerBody.style.opacity = appState.banner.enabled ? '1' : '0.45';
+      bannerBody.style.pointerEvents = appState.banner.enabled ? 'auto' : 'none';
+
+      renderSignaturePreview();
+    }
+
+    function renderSignaturePreview() {
+      const html = buildSignatureHTML();
+      const renderTarget = document.getElementById('signature-preview-render');
+      renderTarget.innerHTML = html;
+
+      // Update Raw HTML code inspector
+      const codeTarget = document.getElementById('raw-html-code');
+      codeTarget.textContent = html;
+      const bytes = new Blob([html]).size;
+      document.getElementById('html-byte-size').textContent = (bytes / 1024).toFixed(2) + ' KB';
+
+      // Sync active template label in Mode 2 KPI strip
+      const tplLabelEl = document.getElementById('stat-active-template');
+      if (tplLabelEl) tplLabelEl.textContent = TEMPLATE_LABELS[appState.template] || 'Modern Minimal';
+    }
+
+    function setTemplate(tpl) {
+      appState.template = tpl;
+      document.querySelectorAll('.tpl-btn').forEach(btn => {
+        const isSelected = btn.getAttribute('data-tpl') === tpl;
+        btn.className = isSelected
+          ? 'tpl-btn group text-left p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/40 transition-all'
+          : 'tpl-btn group text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition-all';
+        const dot = btn.querySelector('.tpl-dot');
+        if (dot) {
+          dot.className = isSelected
+            ? 'w-2 h-2 rounded-full bg-indigo-600 tpl-dot'
+            : 'w-2 h-2 rounded-full bg-transparent tpl-dot';
+        }
+      });
+      renderSignaturePreview();
+    }
+
+    function setAccentColor(hex) {
+      appState.accentColor = hex;
+      document.getElementById('input-accent-color').value = hex;
+      document.getElementById('accent-hex-label').textContent = hex.toUpperCase();
+      document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-600');
+      });
+      renderSignaturePreview();
+    }
+
+    function selectPresetAvatar(url) {
+      document.getElementById('input-avatar').value = url;
+      document.getElementById('toggle-headshot').checked = true;
+      updateSignatureState();
+    }
+
+    function setBannerStyle(style) {
+      appState.banner.style = style;
+      document.querySelectorAll('.bstyle-btn').forEach(btn => {
+        const active = btn.getAttribute('data-bstyle') === style;
+        btn.className = active
+          ? 'bstyle-btn px-2.5 py-1.5 rounded-lg text-xs font-medium border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900'
+          : 'bstyle-btn px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:border-slate-300';
+      });
+      renderSignaturePreview();
+    }
+
+    function resetDemoProfile() {
+      document.getElementById('input-name').value = 'Maya Lin';
+      document.getElementById('input-title').value = 'Head of Growth';
+      document.getElementById('input-department').value = 'Revenue & Marketing';
+      document.getElementById('input-company').value = 'Acme Cloud';
+      document.getElementById('input-email').value = 'maya@acme.io';
+      document.getElementById('input-phone').value = '+1 (415) 890-4312';
+      document.getElementById('input-website').value = 'acme.io';
+      document.getElementById('input-avatar').value = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80';
+      document.getElementById('toggle-headshot').checked = true;
+      setAccentColor('#4f46e5');
+      setTemplate('minimal');
+      updateSignatureState();
+      showToast('Sample profile restored', 'info');
+    }
+
+    // 5. GMAIL PREVIEW LIGHT / DARK MODE SWITCHER
+    function setPreviewTheme(theme) {
+      appState.previewTheme = theme;
+      const canvas = document.getElementById('gmail-canvas');
+      const headers = document.getElementById('gmail-headers');
+      const bodyCopy = document.getElementById('gmail-body-copy');
+      const footerBar = document.getElementById('gmail-footer-bar');
+      const toChip = document.getElementById('gmail-to-chip');
+      const subjectText = document.getElementById('gmail-subject-text');
+      const btnLight = document.getElementById('btn-theme-light');
+      const btnDark = document.getElementById('btn-theme-dark');
+
+      if (theme === 'dark') {
+        canvas.className = 'transition-colors duration-200 bg-[#1e1f22] text-slate-200';
+        headers.className = 'px-5 py-3 border-b border-slate-700/70 text-xs space-y-1.5';
+        bodyCopy.className = 'text-[13.5px] leading-relaxed text-slate-300 space-y-3';
+        footerBar.className = 'px-5 py-3 bg-[#16171a] border-t border-slate-700/70 flex items-center justify-between';
+        toChip.className = 'px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 font-medium text-[11px]';
+        subjectText.className = 'font-medium text-slate-100';
+
+        btnDark.className = 'px-2.5 py-1 rounded-md text-[11px] font-medium bg-indigo-600 text-white shadow-sm transition-all flex items-center gap-1.5';
+        btnLight.className = 'px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-300 hover:text-white transition-all flex items-center gap-1.5';
+      } else {
+        canvas.className = 'transition-colors duration-200 bg-white text-slate-800';
+        headers.className = 'px-5 py-3 border-b border-slate-100 text-xs space-y-1.5';
+        bodyCopy.className = 'text-[13.5px] leading-relaxed text-slate-600 space-y-3';
+        footerBar.className = 'px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between';
+        toChip.className = 'px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px]';
+        subjectText.className = 'font-medium text-slate-800';
+
+        btnLight.className = 'px-2.5 py-1 rounded-md text-[11px] font-medium bg-white text-slate-900 shadow-sm transition-all flex items-center gap-1.5';
+        btnDark.className = 'px-2.5 py-1 rounded-md text-[11px] font-medium text-slate-300 hover:text-white transition-all flex items-center gap-1.5';
+      }
+    }
+
+    // 6. RICH HTML & RAW HTML CLIPBOARD COPY
+    async function copyVisualSignature() {
+      const html = buildSignatureHTML();
+      const plainText = `${appState.profile.name} | ${appState.profile.title} at ${appState.profile.company}\n${appState.profile.email} | ${appState.profile.phone} | ${appState.profile.website}`;
+
+      try {
+        if (navigator.clipboard && window.ClipboardItem) {
+          const htmlBlob = new Blob([html], { type: 'text/html' });
+          const textBlob = new Blob([plainText], { type: 'text/plain' });
+          const clipboardItem = new ClipboardItem({
+            'text/html': htmlBlob,
+            'text/plain': textBlob
+          });
+          await navigator.clipboard.write([clipboardItem]);
+          showToast('Visual signature copied! Paste directly into Gmail Settings → Signature.', 'success');
+          return;
+        }
+      } catch (err) {
+        // Fallback below if iframe permissions block ClipboardItem
+      }
+
+      // Fallback selection copy for sandboxed environments
+      try {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '-9999px';
+        document.body.appendChild(tempDiv);
+
+        const range = document.createRange();
+        range.selectNodeContents(tempDiv);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        document.execCommand('copy');
+        selection.removeAllRanges();
+        document.body.removeChild(tempDiv);
+
+        showToast('Visual signature copied! Ready to paste into Gmail or Apple Mail.', 'success');
+      } catch (e) {
+        showToast('Could not copy automatically — use "Inspect Code" to copy HTML.', 'error');
+      }
+    }
+
+    async function copyRawHtml() {
+      const html = buildSignatureHTML();
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(html);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = html;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        showToast('Clean inline-table HTML copied to clipboard.', 'success');
+      } catch (e) {
+        showToast('Failed to copy HTML.', 'error');
+      }
+    }
+
+    function toggleHtmlSource() {
+      const drawer = document.getElementById('html-source-drawer');
+      const chevron = document.getElementById('source-chevron');
+      const isHidden = drawer.classList.contains('hidden');
+      drawer.classList.toggle('hidden');
+      chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    // 7. TOP NAVIGATION MODE SWITCHER
+    function switchMode(mode) {
+      appState.activeMode = mode;
+
+      // Toggle views
+      ['studio', 'deployer', 'analytics'].forEach(m => {
+        const viewEl = document.getElementById('view-' + m);
+        if (viewEl) viewEl.classList.toggle('hidden', m !== mode);
+
+        // Desktop tab styling
+        const navBtn = document.getElementById('nav-' + m);
+        if (navBtn) {
+          const badgeSpan = navBtn.querySelector('span:first-child');
+          if (m === mode) {
+            navBtn.className = 'mode-tab px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 bg-white text-slate-900 shadow-subtle';
+            if (badgeSpan) badgeSpan.className = 'w-4 h-4 rounded-md bg-indigo-100 text-indigo-700 inline-flex items-center justify-center text-[10px] font-bold';
+          } else {
+            navBtn.className = 'mode-tab px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition-all flex items-center gap-2';
+            if (badgeSpan) badgeSpan.className = 'w-4 h-4 rounded-md bg-slate-200/80 text-slate-600 inline-flex items-center justify-center text-[10px] font-bold';
+          }
+        }
+
+        // Mobile tab styling
+        const mNavBtn = document.getElementById('m-nav-' + m);
+        if (mNavBtn) {
+          mNavBtn.className = (m === mode)
+            ? 'flex-1 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-subtle border border-slate-200/60'
+            : 'flex-1 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600';
+        }
+      });
+
+      // Update Header Primary CTA contextually
+      const headerBtn = document.getElementById('header-primary-cta');
+      const headerLabel = document.getElementById('header-cta-label');
+      if (mode === 'deployer') {
+        headerLabel.textContent = 'Deploy to Workspace';
+        headerBtn.onclick = deploySignaturesToWorkspace;
+      } else {
+        headerLabel.textContent = 'Copy Visual Signature';
+        headerBtn.onclick = copyVisualSignature;
+      }
+
+      if (mode === 'deployer') renderEmployeeTable();
+      if (mode === 'analytics') renderAnalyticsView();
+    }
+
+    // 8. MODE 2: GOOGLE WORKSPACE TEAM DEPLOYER LOGIC
+    function renderEmployeeTable() {
+      const tbody = document.getElementById('employee-table-body');
+      const search = (document.getElementById('employee-search')?.value || '').toLowerCase();
+      const dept = document.getElementById('dept-filter')?.value || 'ALL';
+
+      const filtered = appState.employees.filter(emp => {
+        const matchesSearch = emp.name.toLowerCase().includes(search) ||
+                              emp.email.toLowerCase().includes(search) ||
+                              emp.title.toLowerCase().includes(search);
+        const matchesDept = dept === 'ALL' || emp.department === dept;
+        return matchesSearch && matchesDept;
+      });
+
+      tbody.innerHTML = filtered.map(emp => {
+        const isSynced = emp.status === 'Synced';
+        const statusBadge = isSynced
+          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Synced
+             </span>`
+          : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70">
+               <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Outdated
+             </span>`;
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3.5 pl-6 pr-2">
+              <input type="checkbox" ${emp.selected ? 'checked' : ''} onchange="toggleEmployeeSelection('${emp.id}', this.checked)" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-3">
+                <img src="${esc(emp.avatar)}" alt="${esc(emp.name)}" class="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
+                <div>
+                  <div class="font-semibold text-slate-900">${esc(emp.name)}</div>
+                  <div class="text-[11px] text-slate-500 font-mono">${esc(emp.email)}</div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3.5 px-4">
+              <input type="text" value="${esc(emp.title)}" onchange="updateEmployeeTitle('${emp.id}', this.value)" class="px-2.5 py-1 rounded-lg border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white bg-transparent text-xs text-slate-700 font-medium focus:outline-none transition-all w-48" />
+            </td>
+            <td class="py-3.5 px-4">
+              <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-medium">${esc(emp.department)}</span>
+            </td>
+            <td class="py-3.5 px-4">${statusBadge}</td>
+            <td class="py-3.5 pl-4 pr-6 text-right">
+              <button type="button" onclick="openEmployeePreviewModal('${emp.id}')" class="px-2.5 py-1 rounded-lg border border-slate-200 hover:border-indigo-300 hover:text-indigo-700 text-[11px] font-semibold text-slate-600 transition-all">
+                Preview Gmail
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      updateWorkspaceStats();
+    }
+
+    function updateWorkspaceStats() {
+      const total = appState.employees.length;
+      const synced = appState.employees.filter(e => e.status === 'Synced').length;
+      const outdated = total - synced;
+      const selectedCount = appState.employees.filter(e => e.selected).length;
+
+      document.getElementById('stat-total-seats').textContent = total;
+      document.getElementById('stat-synced-count').textContent = synced;
+      document.getElementById('stat-outdated-count').textContent = outdated;
+
+      const navBadge = document.getElementById('outdated-badge');
+      if (navBadge) {
+        navBadge.textContent = outdated;
+        navBadge.classList.toggle('hidden', outdated === 0);
+      }
+
+      const deployBtnText = document.getElementById('deploy-btn-text');
+      if (deployBtnText) {
+        deployBtnText.textContent = `Push Signature to ${selectedCount} Selected Gmail Account${selectedCount === 1 ? '' : 's'}`;
+      }
+    }
+
+    function toggleEmployeeSelection(id, isChecked) {
+      const emp = appState.employees.find(e => e.id === id);
+      if (emp) emp.selected = isChecked;
+      updateWorkspaceStats();
+    }
+
+    function toggleSelectAllEmployees(isChecked) {
+      appState.employees.forEach(e => e.selected = isChecked);
+      renderEmployeeTable();
+    }
+
+    function updateEmployeeTitle(id, newTitle) {
+      const emp = appState.employees.find(e => e.id === id);
+      if (emp && newTitle.trim()) {
+        emp.title = newTitle.trim();
+        emp.status = 'Outdated';
+        renderEmployeeTable();
+        showToast(`Updated ${emp.name}'s title — marked for Gmail re-sync.`, 'info');
+      }
+    }
+
+    function toggleAddEmployeeForm() {
+      document.getElementById('add-employee-drawer').classList.toggle('hidden');
+    }
+
+    function handleAddEmployee(event) {
+      event.preventDefault();
+      const name = document.getElementById('new-emp-name').value.trim();
+      const email = document.getElementById('new-emp-email').value.trim();
+      const title = document.getElementById('new-emp-title').value.trim();
+      const department = document.getElementById('new-emp-dept').value;
+
+      if (!name || !email) return;
+
+      appState.employees.unshift({
+        id: 'emp-' + Date.now(),
+        name,
+        email,
+        title: title || 'Team Member',
+        department,
+        phone: '+1 (415) 890-5500',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',
+        status: 'Outdated',
+        selected: true,
+        clicks: 0
+      });
+
+      event.target.reset();
+      toggleAddEmployeeForm();
+      renderEmployeeTable();
+      showToast(`Added ${name} (${email}) to Workspace directory.`, 'success');
+    }
+
+    function simulateDirectorySync() {
+      const icon = document.getElementById('sync-icon');
+      icon.classList.add('animate-spin');
+      showToast('Querying Google Admin SDK Directory API...', 'info');
+
+      setTimeout(() => {
+        icon.classList.remove('animate-spin');
+        document.getElementById('last-sync-time').textContent = 'Just now';
+        showToast('Google Workspace directory synced (7 active users verified).', 'success');
+      }, 950);
+    }
+
+    // Realistic animated Gmail API users.settings.sendAs.patch batch deployment
+    function deploySignaturesToWorkspace() {
+      const targets = appState.employees.filter(e => e.selected);
+      if (targets.length === 0) {
+        showToast('Select at least one employee to deploy signatures.', 'error');
+        return;
+      }
+
+      const panel = document.getElementById('deployment-progress-panel');
+      const bar = document.getElementById('deploy-progress-bar');
+      const pctLabel = document.getElementById('deploy-percent-label');
+      const logLabel = document.getElementById('deploy-status-log');
+      const deployBtn = document.getElementById('btn-deploy-all');
+
+      panel.classList.remove('hidden');
+      deployBtn.disabled = true;
+      deployBtn.classList.add('opacity-70');
+      bar.style.width = '5%';
+      pctLabel.textContent = '5%';
+
+      let index = 0;
+      const stepInterval = setInterval(() => {
+        if (index < targets.length) {
+          const emp = targets[index];
+          emp.status = 'Synced';
+          const pct = Math.round(((index + 1) / targets.length) * 100);
+          bar.style.width = pct + '%';
+          pctLabel.textContent = pct + '%';
+          logLabel.textContent = `PATCH gmail/v1/users/${emp.email}/settings/sendAs → 200 OK`;
+          renderEmployeeTable();
+          index++;
+        } else {
+          clearInterval(stepInterval);
+          logLabel.textContent = `Deployment complete — ${targets.length} Gmail signatures live in compose windows.`;
+          deployBtn.disabled = false;
+          deployBtn.classList.remove('opacity-70');
+          showToast(`Successfully pushed signatures to ${targets.length} Gmail accounts!`, 'success');
+          setTimeout(() => {
+            panel.classList.add('hidden');
+          }, 3500);
+        }
+      }, 420);
+    }
+
+    function openEmployeePreviewModal(empId) {
+      const emp = appState.employees.find(e => e.id === empId);
+      if (!emp) return;
+
+      document.getElementById('modal-emp-heading').textContent = `${emp.name} (${emp.email})`;
+      const personalizedHtml = buildSignatureHTML({
+        name: emp.name,
+        title: emp.title,
+        department: emp.department,
+        email: emp.email,
+        phone: emp.phone,
+        avatar: emp.avatar
+      });
+      document.getElementById('modal-emp-signature-container').innerHTML = personalizedHtml;
+
+      const pushBtn = document.getElementById('modal-push-single-btn');
+      pushBtn.onclick = () => {
+        emp.status = 'Synced';
+        renderEmployeeTable();
+        closeEmployeeModal();
+        showToast(`Pushed updated signature to ${emp.email} via Gmail API.`, 'success');
+      };
+
+      document.getElementById('emp-preview-modal').classList.remove('hidden');
+    }
+
+    function closeEmployeeModal() {
+      document.getElementById('emp-preview-modal').classList.add('hidden');
+    }
+
+    // 9. MODE 3: BANNER CAMPAIGNS & ANALYTICS LOGIC
+    function renderAnalyticsView() {
+      const grid = document.getElementById('campaign-cards-grid');
+      grid.innerHTML = appState.campaigns.map(c => {
+        const isActive = c.id === appState.activeCampaignId;
+        return `
+          <div onclick="activateBannerCampaign('${c.id}')" class="cursor-pointer rounded-2xl p-4 border-2 transition-all flex flex-col justify-between ${isActive ? 'border-indigo-600 bg-indigo-50/30 shadow-subtle' : 'border-slate-200/90 hover:border-slate-300 bg-white'}">
+            <div>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-xs font-bold text-slate-900">${esc(c.name)}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}">
+                  ${isActive ? 'Live Across Team' : esc(c.badge)}
+                </span>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed mb-3">"${esc(c.headline)}"</p>
+            </div>
+            <div class="pt-3 border-t border-slate-200/70 flex items-center justify-between text-[11px]">
+              <span class="text-slate-500">CTR: <strong class="text-slate-900">${c.ctr}</strong> (${c.clicks} clicks)</span>
+              <span class="font-semibold text-indigo-600">${isActive ? 'Active ✓' : 'Activate →'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Update KPIs based on active campaign
+      const activeCamp = appState.campaigns.find(c => c.id === appState.activeCampaignId) || appState.campaigns[0];
+      document.getElementById('kpi-impressions').textContent = activeCamp.impressions;
+      document.getElementById('kpi-clicks').textContent = activeCamp.clicks;
+      document.getElementById('kpi-ctr').textContent = activeCamp.ctr;
+      document.getElementById('kpi-meetings').textContent = activeCamp.meetings;
+
+      // Render 14-day bar chart
+      const days = ['Nov 1', 'Nov 2', 'Nov 3', 'Nov 4', 'Nov 5', 'Nov 6', 'Nov 7', 'Nov 8', 'Nov 9', 'Nov 10', 'Nov 11', 'Nov 12', 'Nov 13', 'Nov 14'];
+      const bannerClicks = [94, 112, 128, 119, 145, 62, 58, 138, 156, 174, 169, 188, 195, 212];
+      const socialClicks = [32, 38, 41, 36, 48, 21, 19, 44, 51, 55, 52, 61, 64, 70];
+      const maxTotal = 290;
+
+      const chartEl = document.getElementById('analytics-bar-chart');
+      const labelsEl = document.getElementById('analytics-bar-labels');
+
+      chartEl.innerHTML = days.map((day, idx) => {
+        const bPct = Math.round((bannerClicks[idx] / maxTotal) * 100);
+        const sPct = Math.round((socialClicks[idx] / maxTotal) * 100);
+        return `
+          <div class="flex-1 h-full flex flex-col justify-end items-center group relative">
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-7 bg-slate-900 text-white text-[10px] font-mono px-2 py-0.5 rounded whitespace-nowrap pointer-events-none z-10">
+              ${day}: ${bannerClicks[idx] + socialClicks[idx]} clicks
+            </div>
+            <div class="w-full max-w-[24px] bg-indigo-200 rounded-t-sm transition-all duration-300" style="height:${sPct}%"></div>
+            <div class="w-full max-w-[24px] bg-indigo-600 group-hover:bg-indigo-500 rounded-b-sm transition-all duration-300" style="height:${bPct}%"></div>
+          </div>
+        `;
+      }).join('');
+
+      labelsEl.innerHTML = days.map((d, i) => `<span>${i % 2 === 0 ? d.replace('Nov ', '11/') : ''}</span>`).join('');
+
+      // Render Top Performers Leaderboard
+      const sortedEmps = [...appState.employees].sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+      const maxClicks = sortedEmps[0]?.clicks || 1;
+      document.getElementById('top-performers-list').innerHTML = sortedEmps.map((emp, idx) => {
+        const widthPct = Math.round((emp.clicks / maxClicks) * 100);
+        return `
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2.5">
+                <span class="w-4 text-[11px] font-mono font-bold text-slate-400">#${idx + 1}</span>
+                <img src="${esc(emp.avatar)}" alt="${esc(emp.name)}" class="w-6 h-6 rounded-full object-cover" />
+                <div>
+                  <span class="font-semibold text-slate-900">${esc(emp.name)}</span>
+                  <span class="text-[11px] text-slate-400 ml-1.5">${esc(emp.department)}</span>
+                </div>
+              </div>
+              <span class="font-mono font-semibold text-slate-800">${emp.clicks} clicks</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-600 rounded-full" style="width:${widthPct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function activateBannerCampaign(campId) {
+      appState.activeCampaignId = campId;
+      const camp = appState.campaigns.find(c => c.id === campId);
+      if (camp) {
+        // Sync back into Studio banner fields as well
+        appState.banner.enabled = true;
+        appState.banner.style = camp.style;
+        appState.banner.headline = camp.headline;
+        appState.banner.ctaText = camp.ctaText;
+        appState.banner.url = camp.url;
+
+        document.getElementById('toggle-banner').checked = true;
+        document.getElementById('input-banner-headline').value = camp.headline;
+        document.getElementById('input-banner-cta').value = camp.ctaText;
+        document.getElementById('input-banner-url').value = camp.url;
+        setBannerStyle(camp.style);
+        renderAnalyticsView();
+        showToast(`Switched live company banner to "${camp.name}" — active immediately!`, 'success');
+      }
+    }
+
+    // 10. TOAST NOTIFICATION SYSTEM (NO ALERT/CONFIRM)
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const colors = {
+        success: 'bg-slate-900 text-white border-slate-700',
+        info: 'bg-white text-slate-800 border-slate-200',
+        error: 'bg-rose-600 text-white border-rose-500'
+      };
+      const dotColor = {
+        success: 'bg-emerald-400',
+        info: 'bg-indigo-500',
+        error: 'bg-white'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-float text-xs font-medium transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.success}`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full shrink-0 ${dotColor[type] || dotColor.success}"></span>
+        <span>${esc(message)}</span>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3400);
+    }
+
+    // 11. INITIALIZE ON LOAD
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSignaturePreview();
+      renderEmployeeTable();
+      renderAnalyticsView();
+    });
+  </script>
+</body>
+</html>
+```
